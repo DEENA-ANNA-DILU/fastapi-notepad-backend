@@ -75,11 +75,9 @@ notepad.db
 - Modular backend function ready for future inference
 
 ## 8. Pending Work / Future Enhancements
-- Verification of all features
-- Detailed testing
-- Enhanced UI
-- Enable full LLM execution
-- Documentation improvements
+- Complete verification and testing of all features  
+- Enhance UI for better usability  
+- Enable full LLM inference execution
 
 
 
