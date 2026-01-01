@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date
+from sqlalchemy import Column, Integer, String, ForeignKey, Date
 from app.database import Base
 
 class User(Base):
@@ -9,12 +9,13 @@ class User(Base):
 
 class Task(Base):
     __tablename__ = "tasks"
+
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String)
     description = Column(String, nullable=True)
-    owner = Column(String)
     status = Column(String, default="pending")
 
+    user_id = Column(Integer, ForeignKey("users.id"))
 class CalendarEvent(Base):
     __tablename__ = "calendar_events"
     id = Column(Integer, primary_key=True, index=True)

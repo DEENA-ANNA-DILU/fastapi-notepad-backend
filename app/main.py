@@ -10,6 +10,11 @@ from app import models
 from sqlalchemy.orm import Session
 from app.llm import summarize_text
 from fastapi import Body
+from fastapi.responses import HTMLResponse
+from fastapi import Form
+from app.schemas import UserCreate, TaskCreate
+from app.models import Task, User
+from app.llm import summarize_text
 
 
 
@@ -22,27 +27,48 @@ Base.metadata.create_all(bind=engine)
 
 
 @app.post("/register")
-def register(user: schemas.UserCreate):
-    if user.username in models.fake_users_db:
+def register(
+    user: schemas.UserCreate,
+    db: Session = Depends(get_db)
+):
+    existing_user = db.query(User).filter(User.username == user.username).first()
+    if existing_user:
         raise HTTPException(status_code=400, detail="Username already exists")
+
     hashed_password = auth.hash_password(user.password)
-    models.fake_users_db[user.username] = hashed_password
+
+    new_user = User(
+        username=user.username,
+        hashed_password=hashed_password
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
     return {"msg": "User registered successfully"}
 
-@app.post("/login", response_model=schemas.Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    username = form_data.username
-    password = form_data.password
 
-    db_password = models.fake_users_db.get(username)
-    if not db_password or not auth.verify_password(password, db_password):
+@app.post("/login", response_model=schemas.Token)
+def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.username == form_data.username).first()
+
+    if not user or not auth.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     access_token = auth.create_access_token(
-        data={"sub": username},
+        data={"sub": user.username},
         expires_delta=timedelta(minutes=30)
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+
 
 
 
@@ -59,20 +85,23 @@ def protected_route(current_user: str = Depends(get_current_user)):
 
 
 
-@app.post("/tasks", response_model=schemas.Task)
-def create_task(task: schemas.TaskCreate,
-                current_user: str = Depends(auth.get_current_user),
-                db: Session = Depends(get_db)):
-    new_task = models.Task(
+@app.post("/tasks")
+def create_task(
+    task: TaskCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    new_task = Task(
         title=task.title,
         description=task.description,
-        owner=current_user,
-        status="pending"
+        status="pending",
+        user_id=current_user.id
     )
     db.add(new_task)
     db.commit()
     db.refresh(new_task)
     return new_task
+
 
 
 
@@ -86,7 +115,8 @@ def get_tasks(status: Optional[str] = None,
         if status not in ["pending", "done"]:
             raise HTTPException(status_code=400, detail="Invalid status")
         query = query.filter(models.Task.status == status)
-    return query.all()
+    return db.query(Task).filter(Task.user_id == current_user.id).all()
+
 
 
 @app.put("/tasks/{task_id}", response_model=schemas.Task)
@@ -224,7 +254,7 @@ def delete_event(event_id: int,
 
 
 
-@app.post("/ai/summarize")
+"""@app.post("/ai/summarize")
 def summarize_note(
     text: str = Body(..., embed=True)
 ):
@@ -232,18 +262,27 @@ def summarize_note(
     return {
         "original": text,
         "summary": summary
-    }
+    }"""
 
 
 
-from fastapi.responses import HTMLResponse
-from fastapi import Form
+
 
 @app.get("/", response_class=HTMLResponse)
 def home():
     with open("app/templates/index.html") as f:
         return f.read()
 
-@app.post("/ui/summarize")
+"""@app.post("/ui/summarize")
 def ui_summarize(text: str = Form(...)):
-    return {"summary": text[:100]}
+    return {"summary": text[:100]}"""
+
+
+
+
+@app.post("/llm/summarize")
+def summarize_note(
+    text: str,
+    current_user: User = Depends(get_current_user)
+):
+    return {"summary": summarize_text(text)}
