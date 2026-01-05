@@ -14,7 +14,6 @@ from fastapi.responses import HTMLResponse
 from fastapi import Form
 from app.schemas import UserCreate, TaskCreate
 from app.models import Task, User
-from app.llm import summarize_text
 
 
 
@@ -273,16 +272,11 @@ def home():
     with open("app/templates/index.html") as f:
         return f.read()
 
-"""@app.post("/ui/summarize")
+@app.post("/ui/summarize")
 def ui_summarize(text: str = Form(...)):
-    return {"summary": text[:100]}"""
+    summary = summarize_text(text)
+    return {"summary": summary}
 
 
 
 
-@app.post("/llm/summarize")
-def summarize_note(
-    text: str,
-    current_user: User = Depends(get_current_user)
-):
-    return {"summary": summarize_text(text)}

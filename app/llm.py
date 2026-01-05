@@ -4,13 +4,24 @@ Model selected: google/flan-t5-small (Hugging Face)
 Actual inference can be enabled when environment supports torch.
 """
 
-"""def summarize_text(text: str) -> str:
-    # Placeholder logic (safe for Windows)
-    return text[:100]"""
+def summarize_text(text: str) -> str:
+    """
+    Placeholder summarization.
+    Returns first ~120 characters, cut at word boundary.
+    """
+    words = text.split()
+
+    if len(words) <= 20:
+        return text
+
+    summary_words = words[:20]
+    return " ".join(summary_words) + "..."
 
 
 
-import os
+
+
+"""import os
 import requests
 
 HF_API_URL = "https://api-inference.huggingface.co/models/sshleifer/distilbart-cnn-12-6"
@@ -30,5 +41,5 @@ def summarize_text(text: str):
         return "LLM service unavailable. Please try again later."
 
     result = response.json()
-    return result[0]["summary_text"]
+    return result[0]["summary_text"]"""
 
